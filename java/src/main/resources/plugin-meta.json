@@ -1,0 +1,9 @@
+{
+  "name": "${project.artifactId}",
+  "version": "${project.version}",
+  "entrypoint": "java",
+  "parameters": [
+    "-jar",
+    "${project.build.finalName}.jar"
+  ]
+}
