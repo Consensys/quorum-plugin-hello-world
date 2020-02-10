@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-plugin"
 	"github.com/jpmorganchase/quorum-hello-world-plugin-sdk-go/proto"
+	"github.com/jpmorganchase/quorum-hello-world-plugin-sdk-go/proto_common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -48,7 +49,7 @@ type HelloWorldPluginImpl struct {
 }
 
 func (h *HelloWorldPluginImpl) GRPCServer(_ *plugin.GRPCBroker, s *grpc.Server) error {
-	proto.RegisterPluginInitializerServer(s, h)
+	proto_common.RegisterPluginInitializerServer(s, h)
 	proto.RegisterPluginGreetingServer(s, h)
 	return nil
 }
@@ -70,7 +71,7 @@ func (c *config) validate() error {
 	}
 }
 
-func (h *HelloWorldPluginImpl) Init(_ context.Context, req *proto.PluginInitialization_Request) (*proto.PluginInitialization_Response, error) {
+func (h *HelloWorldPluginImpl) Init(_ context.Context, req *proto_common.PluginInitialization_Request) (*proto_common.PluginInitialization_Response, error) {
 	var cfg config
 	if err := json.Unmarshal(req.RawConfiguration, &cfg); err != nil {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("invalid config: %s, err: %s", string(req.RawConfiguration), err.Error()))
@@ -79,7 +80,7 @@ func (h *HelloWorldPluginImpl) Init(_ context.Context, req *proto.PluginInitiali
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	h.cfg = &cfg
-	return &proto.PluginInitialization_Response{}, nil
+	return &proto_common.PluginInitialization_Response{}, nil
 }
 
 func (h *HelloWorldPluginImpl) Greeting(_ context.Context, req *proto.PluginHelloWorld_Request) (*proto.PluginHelloWorld_Response, error) {
