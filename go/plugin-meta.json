@@ -1,5 +1,0 @@
-{
-  "entrypoint": "helloworld",
-  "name": "quorum-plugin-hello-world",
-  "version": "1.0.0"
-}
