@@ -16,7 +16,7 @@ default: clean build zip
 build: tools
 	@mkdir -p $(OUTPUT_DIR)
 	@LD_FLAGS=$(LD_FLAGS) go generate ./metadata
-	@gox \
+	@CGO_ENABLED=0 gox \
 		-parallel=2 \
 		-os="$(XC_OS)" \
 		-arch="$(XC_ARCH)" \
