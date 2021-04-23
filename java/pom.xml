@@ -113,7 +113,7 @@
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/dist/linux-amd64</outputDirectory>
+                            <finalName>${package}-${version}-linux-amd64</finalName>
                         </configuration>
                     </execution>
                     <execution>
@@ -123,7 +123,7 @@
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/dist/darwin-amd64</outputDirectory>
+                            <finalName>${package}-${version}-darwin-amd64</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -131,8 +131,8 @@
                     <descriptors>
                         <descriptor>src/assembly/distribution.xml</descriptor>
                     </descriptors>
+                    <outputDirectory>${project.build.directory}/dist</outputDirectory>
                     <appendAssemblyId>false</appendAssemblyId>
-                    <finalName>${package}-${version}</finalName>
                 </configuration>
             </plugin>
             <plugin>
@@ -177,7 +177,7 @@
                                     <fileset dir="${project.build.directory}/dist">
                                         <include name="**/*.sha256"/>
                                     </fileset>
-                                    <mapper type="glob" from="*" to="*sum"/>
+                                    <mapper type="glob" from="*.zip.sha256" to="*-sha256.checksum"/>
                                 </move>
                             </target>
                         </configuration>
