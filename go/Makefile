@@ -16,7 +16,7 @@ default: clean build zip
 build: tools
 	@mkdir -p $(OUTPUT_DIR)
 	@LD_FLAGS=$(LD_FLAGS) go generate ./metadata
-	@gox \
+	@CGO_ENABLED=0 gox \
 		-parallel=2 \
 		-os="$(XC_OS)" \
 		-arch="$(XC_ARCH)" \
@@ -27,8 +27,8 @@ build: tools
 zip: build $(TARGET_DIRS)
 
 $(TARGET_DIRS):
-	@zip -j -FS -q $(OUTPUT_DIR)/$@/$(PACKAGE)-$(VERSION).zip $(OUTPUT_DIR)/plugin-meta.json $(OUTPUT_DIR)/$@/*
-	@shasum -a 256 $(OUTPUT_DIR)/$@/$(PACKAGE)-$(VERSION).zip | awk '{print $$1}' > $(OUTPUT_DIR)/$@/$(PACKAGE)-$(VERSION).zip.sha256sum
+	@zip -j -FS -q $(OUTPUT_DIR)/$(PACKAGE)-$(VERSION)-$@.zip $(OUTPUT_DIR)/plugin-meta.json $(OUTPUT_DIR)/$@/*
+	@shasum -a 256 $(OUTPUT_DIR)/$(PACKAGE)-$(VERSION)-$@.zip | awk '{print $$1}' > $(OUTPUT_DIR)/$(PACKAGE)-$(VERSION)-$@-sha256.checksum
 
 tools:
 ifeq (, $(shell which gox))

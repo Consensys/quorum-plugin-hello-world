@@ -18,7 +18,7 @@ jobs:
         with:
           go-version: 1.13
       - name: Check out project files
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Build
         id: build
         run: |
@@ -41,11 +41,12 @@ jobs:
           echo "::set-output name=version::${GITHUB_REF##*/}"
           echo "::set-output name=version_short::${GITHUB_REF##*/v}"
       - name: Setup Java 11
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
+          distribution: 'adopt'
           java-version: 11
       - name: Check out project files
-        uses: actions/checkout@master
+        uses: actions/checkout@v2
         with:
           submodules: recursive
       - name: Load cached dependencies
@@ -66,72 +67,48 @@ jobs:
         with:
           name: java-artifacts
           path: java/target/dist
-  prepare-deploy:
-    name: Prepare package ${{ matrix.package }}
+  deploy:
+    name: Deploy ${{ matrix.artifact }}
     needs:
       - build-go
       - build-java
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: ["quorum-plugin-hello-world-go", "quorum-plugin-hello-world-java"]
-    steps:
-      - name: Setup jfrog CLI
-        uses: jfrog/setup-jfrog-cli@v1
-      - name: Prepare metadata
-        id: meta
-        run: |
-          echo "::set-output name=version::${GITHUB_REF##*/}"
-          echo "::set-output name=package::${{ matrix.package }}"
-      - name: Prepare ${{ steps.meta.outputs.package }}@${{ steps.meta.outputs.version }} in Bintray
-        run: |
-          CHECK_PACKAGE="${{ secrets.BINTRAY_ORGANIZATION }}/${{ secrets.BINTRAY_REPOSITORY }}/${{ steps.meta.outputs.package }}"
-          CHECK_VERSION="$CHECK_PACKAGE/${{ steps.meta.outputs.version }}"
-          echo "Checking $CHECK_PACKAGE"
-          jfrog bt package-show --key ${{ secrets.BINTRAY_API_KEY }} --user ${{ secrets.BINTRAY_USER }} $CHECK_PACKAGE
-          echo "Checking $CHECK_VERSION"
-          jfrog bt version-show --key ${{ secrets.BINTRAY_API_KEY }} --user ${{ secrets.BINTRAY_USER }} $CHECK_VERSION && x=0 || x=1
-          if [ $x -eq 0 ]; then
-            echo "$CHECK_VERSION already exists"
-          else
-            jfrog bt version-create --key ${{ secrets.BINTRAY_API_KEY }} --user ${{ secrets.BINTRAY_USER }} \
-                  --vcs-tag ${{ steps.meta.outputs.version }} --released $(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-                  $CHECK_VERSION
-          fi
-  deploy:
-    name: Deploy ${{ matrix.artifact }}/${{ matrix.arch }}/${{ matrix.extension }} to Bintray
-    needs:
-      - prepare-deploy
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: ["linux-amd64", "darwin-amd64"]
         artifact: ["go-artifacts", "java-artifacts"]
     steps:
-      - name: Setup jfrog CLI
-        uses: jfrog/setup-jfrog-cli@v1
+      - name: Setup Cloudsmith Maven
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+          server-id: cloudsmith # this server id is in the generated pom.xml used to run `mvn deploy`
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
       - name: Download artifacts
         uses: actions/download-artifact@v1
+        # inside ${{ matrix.artifact }} folder, there are:
+        # - plugin-meta.json
+        # - <os>-<arch> folders
+        # - the zip and sha256 files for each <os>-<arch>
         with:
           name: ${{ matrix.artifact }}
       - name: Prepare metadata
         id: meta
         run: |
-          echo "::set-output name=package::$(cat ${{ matrix.artifact }}/plugin-meta.json | jq -r .name)"
-          echo "::set-output name=version::${GITHUB_REF##*/}"
+          echo "::set-output name=plugin_name::$(cat ${{ matrix.artifact }}/plugin-meta.json | jq -r .name)"
           echo "::set-output name=version_short::${GITHUB_REF##*/v}"
-      - name: Upload to Bintray
-        run: |
-          jfrog bt upload --key ${{ secrets.BINTRAY_API_KEY }} --user ${{ secrets.BINTRAY_USER }} --publish --override \
-                "${{ matrix.artifact }}/${{ matrix.arch }}/${{ steps.meta.outputs.package }}-${{ steps.meta.outputs.version_short }}.*" \
-                ${{ secrets.BINTRAY_ORGANIZATION }}/${{ secrets.BINTRAY_REPOSITORY }}/${{ steps.meta.outputs.package }}/${{ steps.meta.outputs.version }} \
-                ${{ steps.meta.outputs.package }}/${{ steps.meta.outputs.version }}/${{ matrix.arch }}/
+      - name: Upload to Cloudsmith
+        working-directory: ${{ matrix.artifact }}
+        run: |-
+          curl -1sLf 'https://artifacts.consensys.net/public/quorum-go-plugins/raw/names/utils/versions/latest/uploader.sh' \
+            | bash -s ./ ${{ steps.meta.outputs.plugin_name }} ${{ steps.meta.outputs.version_short }} linux-amd64 darwin-amd64
+        env:
+          MAVEN_USERNAME: '${{ secrets.CLOUDSMITH_USERNAME }}'
+          MAVEN_PASSWORD: '${{ secrets.CLOUDSMITH_API_KEY }}'
   notify:
     name: Notify Slack
     needs:
-      - build-go
-      - build-java
-      - prepare-deploy
       - deploy
     if: always()
     runs-on: ubuntu-latest
