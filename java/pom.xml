@@ -17,7 +17,7 @@
 
     <properties>
         <java.version>11</java.version>
-        <grpc.version>1.22.1</grpc.version>
+        <grpc.version>1.53.0</grpc.version>
         <protobuf.version>3.9.0</protobuf.version>
         <bouncycastle.version>1.62</bouncycastle.version>
 
